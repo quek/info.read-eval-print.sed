@@ -56,7 +56,7 @@
                   (,out-var ,out))
               ,form)))))
 
-(sed (:in "~/.zshrc")
-  (? "HIS"
-     (c "---------------------------- HIS"))
-  (s "setopt" "FOO"))
+(sed (:in "/usr/share/doc/hyperspec/Body/01_.htm")
+  (? "/BODY"
+     (c "---------------------------- end body"))
+  (s "HTML" "FOOOO"))
