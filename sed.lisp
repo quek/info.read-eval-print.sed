@@ -11,7 +11,15 @@
   hold-space
   pattern-space
   (line-numebr 0)
-  (eol +lf+))
+  (eol +lf+)
+  (before-output nil)
+  (after-output nil))
+
+(defun do-before-output (sed)
+  (collect-ignore (funcall (scan 'list (sed-before-output sed)))))
+
+(defun do-after-output (sed)
+  (collect-ignore (funcall (scan 'list (sed-after-output sed)))))
 
 (define-symbol-macro *pattern-space* (sed-pattern-space *sed*))
 (define-symbol-macro *line-number* (sed-line-numebr *sed*))
@@ -28,8 +36,18 @@
 (defun c (text)
   (setf *pattern-space* text))
 
+(defun d ()
+  (throw :next nil))
+
 (defun i (text)
-  (setf *pattern-space* (format nil "~a~a~a" text *eol* *pattern-space*)))
+  (push (lambda ()
+          (format (sed-out *sed*) "~a~a" text *eol*))
+        (sed-before-output *sed*)))
+
+(defun a (text)
+  (push (lambda ()
+          (format (sed-out *sed*) "~a~a" text *eol*))
+        (sed-after-output *sed*)))
 
 (defgeneric match-p (arg))
 
@@ -55,11 +73,20 @@
                      (unless (setf *pattern-space* (read-line (sed-in *sed*) nil))
                        (go :end))
                      (incf *line-number*)
+                     (setf (sed-before-output *sed*) nil
+                           (sed-after-output *sed*) nil)
                      (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
-                     ,@body
-                     (format (sed-out *sed*) "~a~a" *pattern-space* *eol*)
+                     (catch :next
+                       (unwind-protect
+                            (progn
+                              (unwind-protect
+                                   (progn ,@body)
+                                (do-before-output *sed*))
+                              (format (sed-out *sed*) "~a~a" *pattern-space* *eol*))
+                         (do-after-output *sed*)))
                      (go :next)
                    :end))))
+    ;;; ↓どうにかなりませんか?
     `(cond ((and (not (streamp ,in))
                  (not (streamp ,out)))
             (with-open-file (,in-var ,in)
@@ -84,5 +111,9 @@
     (i "<!-- はじめの一歩 -->"))
   (? "/body"
      (c "---------------------------- end body"))
-  (s "html" "FOOOO"))
+  (s "html" "FOOOO")
+  (? "<title>"
+    (a "だいめい"))
+  (? "<title>"
+     (d)))
 |#
