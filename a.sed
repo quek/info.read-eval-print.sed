@@ -1,5 +1,2 @@
-1i\
-hello!!!!!
-3a\
-fooooooooooo
-3d
+/h2/,/body/i\
+bababa

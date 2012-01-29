@@ -13,7 +13,8 @@
   (line-numebr 0)
   (eol +lf+)
   (before-output nil)
-  (after-output nil))
+  (after-output nil)
+  (numomo (make-hash-table)))
 
 (defun do-before-output (sed)
   (collect-ignore (funcall (scan 'list (sed-before-output sed)))))
@@ -60,6 +61,18 @@
 (defmacro ? (address-or-address1-and-2 &body body)
   `(when (match-p ,address-or-address1-and-2)
      ,@body))
+
+(defmacro ?? (from to &body body)
+  (alexandria:with-gensyms (in-match-p)
+    `(let ((,in-match-p nil))
+       (when (if (gethash ,in-match-p (sed-numomo *sed*))
+                 (progn
+                   (when (match-p ,to)
+                     (setf (gethash ,in-match-p (sed-numomo *sed*)) nil))
+                   t)
+                 (when (match-p ,from)
+                   (setf (gethash ,in-match-p (sed-numomo *sed*)) t)))
+         ,@body))))
 
 (defmacro sed ((&key (in *standard-input*)
                   (out *standard-output*)
@@ -116,4 +129,8 @@
     (a "だいめい"))
   (? "<title>"
      (d)))
+
+(sed (:in (merge-pathnames "a.html" (asdf:system-source-file :info.read-eval-print.sed)))
+  (?? "h2" "body"
+    (i "bababa")))
 |#
