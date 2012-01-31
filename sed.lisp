@@ -81,45 +81,32 @@
                   (out *standard-output*)
                   (eol +lf+))
                &body body)
-  (let* ((in-var (gensym "in"))
-         (out-var (gensym "out"))
-         (form `(let ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol)))
-                  (tagbody
-                   :next
-                     (unless (setf *pattern-space* (read-line (sed-in *sed*) nil))
-                       (go :end))
-                     (incf *line-number*)
-                     (setf (sed-before-output *sed*) nil
-                           (sed-after-output *sed*) nil)
-                     (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
-                     (catch :next
-                       (unwind-protect
-                            (progn
-                              (unwind-protect
-                                   (progn ,@body)
-                                (do-before-output *sed*))
-                              (format (sed-out *sed*) "~a~a" *pattern-space* *eol*))
-                         (do-after-output *sed*)))
-                     (go :next)
-                   :end))))
-    ;;; ↓どうにかなりませんか?
-    `(cond ((and (not (streamp ,in))
-                 (not (streamp ,out)))
-            (with-open-file (,in-var ,in)
-              (with-open-file (,out-var ,out :direction :output :if-exists :supersede)
-                ,form)))
-           ((not (streamp ,in))
-            (with-open-file (,in-var ,in)
-              (let ((,out-var ,out))
-                ,form)))
-           ((not (streamp ,out))
-            (let ((,in-var ,in))
-              (with-open-file (,out-var ,out :direction :output :if-exists :supersede)
-                ,form)))
-           (t
-            (let ((,in-var ,in)
-                  (,out-var ,out))
-              ,form)))))
+  (alexandria:once-only (in out eol)
+    (let ((in-var (gensym "in"))
+          (out-var (gensym "out")))
+      `(with-open-stream (,in-var (if (streamp ,in) ,in (open ,in)))
+         (with-open-stream (,out-var (if (streamp ,out)
+                                         ,out
+                                         (open ,out :direction :output :if-exists :supersede)))
+           (let ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol)))
+             (tagbody
+              :next
+                (unless (setf *pattern-space* (read-line (sed-in *sed*) nil))
+                  (go :end))
+                (incf *line-number*)
+                (setf (sed-before-output *sed*) nil
+                      (sed-after-output *sed*) nil)
+                (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
+                (catch :next
+                  (unwind-protect
+                       (progn
+                         (unwind-protect
+                              (progn ,@body)
+                           (do-before-output *sed*))
+                         (format (sed-out *sed*) "~a~a" *pattern-space* *eol*))
+                    (do-after-output *sed*)))
+                (go :next)
+              :end)))))))
 
 #|
 (sed (:in (merge-pathnames "a.html" (asdf:system-source-file :info.read-eval-print.sed)))
