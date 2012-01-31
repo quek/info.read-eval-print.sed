@@ -58,6 +58,9 @@
 (defmethod match-p ((arg integer))
   (= arg *line-number*))
 
+(defmethod match-p ((arg (eql :$)))
+  (not (peek-char nil (sed-in *sed*) nil)))
+
 (defmacro ? (address-or-address1-and-2 &body body)
   `(when (match-p ,address-or-address1-and-2)
      ,@body))
