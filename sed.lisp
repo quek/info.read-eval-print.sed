@@ -23,8 +23,37 @@
   (collect-ignore (funcall (scan 'list (sed-after-output sed)))))
 
 (define-symbol-macro *pattern-space* (sed-pattern-space *sed*))
+(define-symbol-macro *hold-space* (sed-hold-space *sed*))
 (define-symbol-macro *line-number* (sed-line-numebr *sed*))
 (define-symbol-macro *eol* (sed-eol *sed*))
+
+(defun a (text)
+  (push (lambda ()
+          (format (sed-out *sed*) "~a~a" text *eol*))
+        (sed-after-output *sed*)))
+
+(defun c (text)
+  (setf *pattern-space* text))
+
+(defun d ()
+  (throw :next nil))
+
+(defun g ()
+  (setf *pattern-space* *hold-space*))
+
+(defun g* ()
+  (setf *pattern-space* (format nil "~a~a~a" *pattern-space* *eol* *hold-space*)))
+
+(defun h ()
+  (setf *hold-space* *pattern-space*))
+
+(defun h* ()
+  (setf *hold-space* (format nil "~a~a~a" *hold-space* *eol* *pattern-space*)))
+
+(defun i (text)
+  (push (lambda ()
+          (format (sed-out *sed*) "~a~a" text *eol*))
+        (sed-before-output *sed*)))
 
 (defun s (pattern replacement &rest options)
   (let ((pattern (ppcre:create-scanner pattern :case-insensitive-mode (member :i options))))
@@ -34,21 +63,8 @@
                      #'ppcre:regex-replace)
                  pattern *pattern-space* replacement nil))))
 
-(defun c (text)
-  (setf *pattern-space* text))
-
-(defun d ()
-  (throw :next nil))
-
-(defun i (text)
-  (push (lambda ()
-          (format (sed-out *sed*) "~a~a" text *eol*))
-        (sed-before-output *sed*)))
-
-(defun a (text)
-  (push (lambda ()
-          (format (sed-out *sed*) "~a~a" text *eol*))
-        (sed-after-output *sed*)))
+(defun x ()
+  (rotatef *pattern-space* *hold-space*))
 
 (defgeneric match-p (arg))
 
@@ -107,20 +123,3 @@
                     (do-after-output *sed*)))
                 (go :next)
               :end)))))))
-
-#|
-(sed (:in (merge-pathnames "a.html" (asdf:system-source-file :info.read-eval-print.sed)))
-  (? 1
-    (i "<!-- はじめの一歩 -->"))
-  (? "/body"
-     (c "---------------------------- end body"))
-  (s "html" "FOOOO")
-  (? "<title>"
-    (a "だいめい"))
-  (? "<title>"
-     (d)))
-
-(sed (:in (merge-pathnames "a.html" (asdf:system-source-file :info.read-eval-print.sed)))
-  (?? "h2" "body"
-    (i "bababa")))
-|#

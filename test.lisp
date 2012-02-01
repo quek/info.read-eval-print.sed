@@ -1,7 +1,8 @@
 (cl:in-package :cl)
 
-(quicklisp:quickload :info.read-eval-print.sed)
-(quicklisp:quickload :trivial-shell)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (quicklisp:quickload :info.read-eval-print.sed)
+  (quicklisp:quickload :trivial-shell))
 
 (info.read-eval-print.series-ext:sdefpackage :info.read-eval-print.sed.test
                                              (:use :cl :info.read-eval-print.sed

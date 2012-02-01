@@ -4,11 +4,16 @@
  :info.read-eval-print.sed
  (:use :cl)
  (:export #:sed
-          #:s
+          #:a
           #:c
           #:d
           #:i
-          #:a
+          #:g
+          #:g*
+          #:h
+          #:h*
+          #:s
+          #:x
           #:?
           #:??))
 
