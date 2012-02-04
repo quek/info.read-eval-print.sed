@@ -104,22 +104,21 @@
          (with-open-stream (,out-var (if (streamp ,out)
                                          ,out
                                          (open ,out :direction :output :if-exists :supersede)))
-           (let ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol)))
-             (tagbody
-              :next
-                (unless (setf *pattern-space* (read-line (sed-in *sed*) nil))
-                  (go :end))
-                (incf *line-number*)
-                (setf (sed-before-output *sed*) nil
-                      (sed-after-output *sed*) nil)
-                (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
-                (catch :next
-                  (unwind-protect
-                       (progn
-                         (unwind-protect
-                              (progn ,@body)
-                           (do-before-output *sed*))
-                         (format (sed-out *sed*) "~a~a" *pattern-space* *eol*))
-                    (do-after-output *sed*)))
-                (go :next)
-              :end)))))))
+           (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol)))
+            :next
+              (unless (setf *pattern-space* (read-line (sed-in *sed*) nil))
+                (go :end))
+              (incf *line-number*)
+              (setf (sed-before-output *sed*) nil
+                    (sed-after-output *sed*) nil)
+              (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
+              (catch :next
+                (unwind-protect
+                     (progn
+                       (unwind-protect
+                            (progn ,@body)
+                         (do-before-output *sed*))
+                       (format (sed-out *sed*) "~a~a" *pattern-space* *eol*))
+                  (do-after-output *sed*)))
+              (go :next)
+            :end))))))
