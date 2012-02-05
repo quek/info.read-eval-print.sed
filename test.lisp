@@ -54,3 +54,8 @@
 
 (sl-test "$aend" (? :$ (a "end")))
 
+(let ((*text* "a b c
+1 2 3"))
+  (assert (string= "b
+2
+" (lsed (s ".*" ($ 2))))))

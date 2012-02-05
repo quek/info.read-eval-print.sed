@@ -14,6 +14,8 @@
   (eol +lf+)
   (before-output nil)
   (after-output nil)
+  (field-separator "\\s")
+  ($ nil)
   (numomo (make-hash-table)))
 
 (defun do-before-output (sed)
@@ -22,10 +24,25 @@
 (defun do-after-output (sed)
   (collect-ignore (funcall (scan 'list (sed-after-output sed)))))
 
+(defun read-next (sed)
+  (let ((line (read-line (sed-in sed) nil)))
+    (if line
+        (progn
+          (incf *line-number*)
+          (setf (sed-$ sed) (ppcre:split (sed-field-separator sed) line)))
+        (progn
+          (setf (sed-$ sed) nil)))
+    (setf (sed-pattern-space sed) line)))
+
 (define-symbol-macro *pattern-space* (sed-pattern-space *sed*))
 (define-symbol-macro *hold-space* (sed-hold-space *sed*))
 (define-symbol-macro *line-number* (sed-line-numebr *sed*))
 (define-symbol-macro *eol* (sed-eol *sed*))
+
+(defun $ (n)
+  (if (zerop n)
+      *pattern-space*
+      (nth (1- n) (sed-$ *sed*))))
 
 (defun a (text)
   (push (lambda ()
@@ -106,9 +123,8 @@
                                          (open ,out :direction :output :if-exists :supersede)))
            (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol)))
             :next
-              (unless (setf *pattern-space* (read-line (sed-in *sed*) nil))
+              (unless (read-next *sed*)
                 (go :end))
-              (incf *line-number*)
               (setf (sed-before-output *sed*) nil
                     (sed-after-output *sed*) nil)
               (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
