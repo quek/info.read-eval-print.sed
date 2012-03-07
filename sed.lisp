@@ -72,6 +72,14 @@
           (format (sed-out *sed*) "~a~a" text *eol*))
         (sed-before-output *sed*)))
 
+(defun n ()
+  (i)
+  (setf *pattern-space* (read-next *sed*)))
+
+(defun n* ()
+  (setf *pattern-space* (format nil "~a~a~a" *pattern-space* *eol*
+                                (or (read-next *sed*) ""))))
+
 (defun s (pattern replacement &rest options)
   (let ((pattern (ppcre:create-scanner pattern :case-insensitive-mode (member :i options))))
     (setf *pattern-space*
