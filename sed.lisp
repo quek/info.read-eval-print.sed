@@ -18,6 +18,11 @@
   ($ nil)
   (numomo (make-hash-table)))
 
+(define-symbol-macro *pattern-space* (sed-pattern-space *sed*))
+(define-symbol-macro *hold-space* (sed-hold-space *sed*))
+(define-symbol-macro *line-number* (sed-line-numebr *sed*))
+(define-symbol-macro *eol* (sed-eol *sed*))
+
 (defun do-before-output (sed)
   (collect-ignore (funcall (scan 'list (sed-before-output sed)))))
 
@@ -33,11 +38,6 @@
         (progn
           (setf (sed-$ sed) nil)))
     (setf (sed-pattern-space sed) line)))
-
-(define-symbol-macro *pattern-space* (sed-pattern-space *sed*))
-(define-symbol-macro *hold-space* (sed-hold-space *sed*))
-(define-symbol-macro *line-number* (sed-line-numebr *sed*))
-(define-symbol-macro *eol* (sed-eol *sed*))
 
 (defun $ (n)
   (if (zerop n)
