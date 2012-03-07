@@ -16,6 +16,7 @@
   (after-output nil)
   (field-separator "\\s")
   ($ nil)
+  (n nil)
   (numomo (make-hash-table)))
 
 (define-symbol-macro *pattern-space* (sed-pattern-space *sed*))
@@ -73,12 +74,19 @@
         (sed-before-output *sed*)))
 
 (defun n ()
-  (i)
+  (i *pattern-space*)
   (setf *pattern-space* (read-next *sed*)))
 
 (defun n* ()
   (setf *pattern-space* (format nil "~a~a~a" *pattern-space* *eol*
                                 (or (read-next *sed*) ""))))
+
+(defun p ()
+  (format (sed-out *sed*) "~a~a" *pattern-space* *eol*))
+
+(defun q ()
+  (unless (sed-n *sed*) (p))
+  (throw :quit nil))
 
 (defun s (pattern replacement &rest options)
   (let ((pattern (ppcre:create-scanner pattern :case-insensitive-mode (member :i options))))
@@ -120,7 +128,8 @@
 
 (defmacro sed ((&key (in *standard-input*)
                   (out *standard-output*)
-                  (eol +lf+))
+                  (eol +lf+)
+                  n)
                &body body)
   (alexandria:once-only (in out eol)
     (let ((in-var (gensym "in"))
@@ -129,20 +138,22 @@
          (with-open-stream (,out-var (if (streamp ,out)
                                          ,out
                                          (open ,out :direction :output :if-exists :supersede)))
-           (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol)))
-            :next
-              (unless (read-next *sed*)
-                (go :end))
-              (setf (sed-before-output *sed*) nil
-                    (sed-after-output *sed*) nil)
-              (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
-              (catch :next
-                (unwind-protect
-                     (progn
-                       (unwind-protect
-                            (progn ,@body)
-                         (do-before-output *sed*))
-                       (format (sed-out *sed*) "~a~a" *pattern-space* *eol*))
-                  (do-after-output *sed*)))
-              (go :next)
-            :end))))))
+           (catch :quit
+             (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol :n ,n)))
+              :next
+                (unless (read-next *sed*)
+                  (go :end))
+                (setf (sed-before-output *sed*) nil
+                      (sed-after-output *sed*) nil)
+                (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
+                (catch :next
+                  (unwind-protect
+                       (progn
+                         (unwind-protect
+                              (progn ,@body)
+                           (do-before-output *sed*))
+                         (unless (sed-n *sed*)
+                           (p)))
+                    (do-after-output *sed*)))
+                (go :next)
+              :end)))))))
