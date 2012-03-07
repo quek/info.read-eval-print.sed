@@ -127,33 +127,42 @@
          ,@body))))
 
 (defmacro sed ((&key (in *standard-input*)
-                  (out *standard-output*)
+                  (out *standard-output* out-supplied-p)
                   (eol +lf+)
-                  n)
+                  n
+                  i)
                &body body)
-  (alexandria:once-only (in out eol)
+  (alexandria:once-only (in out eol i n)
     (let ((in-var (gensym "in"))
           (out-var (gensym "out")))
-      `(with-open-stream (,in-var (if (streamp ,in) ,in (open ,in)))
-         (with-open-stream (,out-var (if (streamp ,out)
-                                         ,out
-                                         (open ,out :direction :output :if-exists :supersede)))
-           (catch :quit
-             (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol :n ,n)))
-              :next
-                (unless (read-next *sed*)
-                  (go :end))
-                (setf (sed-before-output *sed*) nil
-                      (sed-after-output *sed*) nil)
-                (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
-                (catch :next
-                  (unwind-protect
-                       (progn
-                         (unwind-protect
-                              (progn ,@body)
-                           (do-before-output *sed*))
-                         (unless (sed-n *sed*)
-                           (p)))
-                    (do-after-output *sed*)))
-                (go :next)
-              :end)))))))
+      `(progn
+         (cond ((eq ,i t)
+                (setf ,out (swank-backend::temp-file-name)))
+               ((stringp ,i)
+                (setf ,out (make-pathname :defaults ,in :type ,i))))
+         (with-open-stream (,in-var (if (streamp ,in) ,in (open ,in)))
+           (with-open-stream (,out-var (if (streamp ,out)
+                                           ,out
+                                           (open ,out :direction :output
+                                                      :if-exists :supersede)))
+             (catch :quit
+               (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol :n ,n)))
+                :next
+                  (unless (read-next *sed*)
+                    (go :end))
+                  (setf (sed-before-output *sed*) nil
+                        (sed-after-output *sed*) nil)
+                  (setf *pattern-space* (string-right-trim #(#\cr #\lf) *pattern-space*))
+                  (catch :next
+                    (unwind-protect
+                         (progn
+                           (unwind-protect
+                                (progn ,@body)
+                             (do-before-output *sed*))
+                           (unless (sed-n *sed*)
+                             (p)))
+                      (do-after-output *sed*)))
+                  (go :next)
+                :end))))
+         (when (eq ,i t)
+           (rename-file ,out ,in))))))
