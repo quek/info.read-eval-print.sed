@@ -165,4 +165,5 @@
                   (go :next)
                 :end))))
          (when (eq ,i t)
-           (rename-file ,out ,in))))))
+           (cl-fad:copy-file ,out ,in :overwrite t)
+           (delete-file ,out))))))

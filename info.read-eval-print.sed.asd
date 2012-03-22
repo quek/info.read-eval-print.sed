@@ -6,4 +6,5 @@
                (:file "sed"))
   :depends-on (info.read-eval-print.series-ext
                alexandria
-               cl-ppcre))
+               cl-ppcre
+               cl-fad))
