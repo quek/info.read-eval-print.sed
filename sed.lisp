@@ -115,6 +115,21 @@
      ,@body))
 
 (defmacro ?? (from to &body body)
+  "/from/,/to/body
+form から to までのテキストブロックに対して body を実行"
+  (alexandria:with-gensyms (line)
+    `(when (match-p ,from)
+       (loop for ,line = (read-next *sed*)
+             while ,line
+             do (setf *pattern-space* (format nil "~a~a~a" *pattern-space* *eol* ,line))
+             if (let ((*pattern-space* ,line))
+                  (match-p ,to))
+               do ,@body
+                  (loop-finish)))))
+
+(defmacro ??* (from to &body body)
+  "/from/,/to/{body}
+form から to までそれぞれの行に対して body を実行"
   (alexandria:with-gensyms (in-match-p)
     `(let ((,in-match-p nil))
        (when (if (gethash ,in-match-p (sed-numomo *sed*))
@@ -127,7 +142,9 @@
          ,@body))))
 
 (defmacro sed ((&key (in *standard-input*)
-                  (out *standard-output* out-supplied-p)
+                  (input-external-format :default)
+                  out
+                  (output-external-format input-external-format)
                   (eol +lf+)
                   n
                   i)
@@ -140,11 +157,17 @@
                 (setf ,out (swank-backend::temp-file-name)))
                ((stringp ,i)
                 (setf ,out (make-pathname :defaults ,in :type ,i))))
-         (with-open-stream (,in-var (if (streamp ,in) ,in (open ,in)))
-           (with-open-stream (,out-var (if (streamp ,out)
-                                           ,out
-                                           (open ,out :direction :output
-                                                      :if-exists :supersede)))
+         (with-open-stream (,in-var (if (streamp ,in)
+                                        ,in
+                                        (open ,in :external-format ,input-external-format)))
+           (with-open-stream (,out-var (cond ((null ,out)
+                                              *standard-output*)
+                                             ((streamp ,out)
+                                              ,out)
+                                             (t
+                                              (open ,out :direction :output
+                                                         :if-exists :supersede
+                                                         :external-format ,output-external-format))))
              (catch :quit
                (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol :n ,n)))
                 :next
