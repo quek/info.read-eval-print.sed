@@ -14,7 +14,7 @@
   (eol +lf+)
   (before-output nil)
   (after-output nil)
-  (field-separator "\\s")
+  (field-separator "\\s+")
   ($ nil)
   (n nil)
   (numomo (make-hash-table)))
@@ -146,6 +146,7 @@ form から to までそれぞれの行に対して body を実行"
                   out
                   (output-external-format input-external-format)
                   (eol +lf+)
+                  (field-separator "\\s+")
                   n
                   i)
                &body body)
@@ -169,7 +170,8 @@ form から to までそれぞれの行に対して body を実行"
                                                          :if-exists :supersede
                                                          :external-format ,output-external-format))))
              (catch :quit
-               (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol :n ,n)))
+               (prog ((*sed* (make-sed :in ,in-var :out ,out-var :eol ,eol :n ,n,
+                                       :field-separator ,field-separator)))
                 :next
                   (unless (read-next *sed*)
                     (go :end))
